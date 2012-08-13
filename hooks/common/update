@@ -10,6 +10,10 @@ use warnings;
 #       find the rc file, then pull the libraries
 # ----------------------------------------------------------------------------
 
+use Time::HiRes qw(gettimeofday tv_interval);
+my $starttime;
+BEGIN { $starttime = [gettimeofday]; }
+
 BEGIN {
     # people with shell access should be allowed to bypass the update hook,
     # simply by setting an env var that the ssh "front door" will never set
@@ -89,6 +93,9 @@ $UPDATE_CHAINS_TO ||= 'hooks/update.secondary';
 # now log it and exit 0 so git can get on with it
 log_it("", "$att_acc\t" .  substr($oldsha, 0, 14) . "\t" . substr($newsha, 0, 14) .
     "\t$reported_repo\t$ref\t$log_refex");
+
+my $elapsedtime = tv_interval($starttime);
+print STDERR "========== update  elapsedtime $elapsedtime\n";
 
 exit 0;
 

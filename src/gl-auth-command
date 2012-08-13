@@ -24,6 +24,9 @@ use warnings;
 # ----------------------------------------------------------------------------
 #       find the rc file, then pull the libraries in
 # ----------------------------------------------------------------------------
+use Time::HiRes qw(gettimeofday tv_interval);
+my $starttime;
+BEGIN { $starttime = [gettimeofday]; }
 
 # this (gl-auth-command) is one of the two valid starting points for all of
 # gitolite for normal operations (the other being gl-time).  All other
@@ -192,4 +195,7 @@ if ($ENV{REQUEST_URI}) {
 log_it();
 
 $repo = "'$REPO_BASE/$repo.git'";
+
+my $elapsedtime = tv_interval($starttime);
+print STDERR "========== pre-git elapsedtime $elapsedtime\n";
 exec("git", "shell", "-c", "$verb $repo") unless $verb eq 'git-init';
