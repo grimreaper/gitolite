@@ -18,6 +18,7 @@ package Gitolite::Conf::Store;
   new_wild_repo
   hook_repos
   store
+  parse_init
   parse_done
 );
 
@@ -26,6 +27,7 @@ use Data::Dumper;
 $Data::Dumper::Indent   = 1;
 $Data::Dumper::Sortkeys = 1;
 
+use Gitolite::Redis;
 use Gitolite::Common;
 use Gitolite::Rc;
 use Gitolite::Hooks::Update;
@@ -57,6 +59,11 @@ sub add_to_group {
     # the group was *first* created by using $subconf as the *value*
     do { $groups{$lhs}{$_} ||= $subconf }
       for ( expand_list(@rhs) );
+
+    $redis->sadd('groupnames', $lhs);
+    for ( expand_list(@rhs) ) {
+        $redis->hsetnx("group:$lhs", $_, $subconf);
+    }
 
     # create the group hash even if empty
     $groups{$lhs} = {} unless $groups{$lhs};
@@ -224,7 +231,12 @@ sub store {
     store_common();
 }
 
+sub parse_init {
+    $redis->flushall();
+}
+
 sub parse_done {
+    $redis->save();
     for my $ig ( sort keys %ignored ) {
         _warn "subconf '$ig' attempting to set access for " . join( ", ", sort keys %{ $ignored{$ig} } );
     }
