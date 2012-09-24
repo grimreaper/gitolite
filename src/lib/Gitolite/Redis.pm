@@ -31,7 +31,7 @@ sub _start_redis_server {
 
 __DATA__
 # resources
-maxmemory 10MB
+maxmemory 50MB
 port 0
 unixsocket %HOME/.gitolite-redis.sock
 unixsocketperm 700

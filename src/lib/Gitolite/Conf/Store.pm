@@ -60,9 +60,10 @@ sub add_to_group {
     do { $groups{$lhs}{$_} ||= $subconf }
       for ( expand_list(@rhs) );
 
-    $redis->sadd('groupnames', $lhs);
     for ( expand_list(@rhs) ) {
-        $redis->hsetnx("g:$lhs", $_, $subconf);
+        _die "bad reponame '$_'" if $_ !~ $REPOPATT_PATT;
+        $redis->hsetnx("g:$_", $lhs, $subconf);
+        $redis->sadd('repopatterns', $_) if $_ !~ $REPONAME_PATT;
     }
 
     # create the group hash even if empty
@@ -74,8 +75,9 @@ sub set_repolist {
 
     # ...sanity checks
     for (@repolist) {
-        _warn "explicit '.git' extension ignored for $_.git" if s/\.git$//;
         _die "bad reponame '$_'" if $_ !~ $REPOPATT_PATT;
+        $redis->sadd('repopatterns', $_) if $_ !~ $REPONAME_PATT;
+        _warn "explicit '.git' extension ignored for $_.git" if s/\.git$//;
     }
 }
 
@@ -117,7 +119,6 @@ sub add_rule {
             next;
         }
 
-        $redis->sadd('repopatterns', $repo) if $repo !~ $REPONAME_PATT;
         $redis->set("r:$nextseq", "$perm\t$ref");
         $redis->sadd("rs:$repo:$user", $nextseq);
 
