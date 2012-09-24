@@ -62,7 +62,7 @@ sub add_to_group {
 
     $redis->sadd('groupnames', $lhs);
     for ( expand_list(@rhs) ) {
-        $redis->hsetnx("group:$lhs", $_, $subconf);
+        $redis->hsetnx("g:$lhs", $_, $subconf);
     }
 
     # create the group hash even if empty
@@ -116,6 +116,10 @@ sub add_rule {
             $ignored{$subconf}{$repo} = 1;
             next;
         }
+
+        $redis->sadd('repopatterns', $repo) if $repo !~ $REPONAME_PATT;
+        $redis->set("r:$nextseq", "$perm\t$ref");
+        $redis->sadd("rs:$repo:$user", $nextseq);
 
         push @{ $repos{$repo}{$user} }, [ $nextseq, $perm, $ref ];
     }
