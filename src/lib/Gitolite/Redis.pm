@@ -5,6 +5,7 @@ package Gitolite::Redis;
 
 @EXPORT = qw(
   $redis
+  _redis_rules
 );
 
 use Exporter 'import';
@@ -25,6 +26,64 @@ sub _start_redis_server {
     print REDIS $conf;
     close REDIS;
     exit 0;
+}
+
+sub _redis_rules {
+    my ($repo, $g_repo, $user) = @_;
+    my $vk_rules = "vk_rules:$repo:$g_repo:$user";
+    my @rules;
+
+    if ($redis->type($vk_rules) eq 'list') {
+        print STDERR "$vk_rules ttl is:" . $redis->ttl($vk_rules) . "\n";
+    } else {
+        print STDERR "$vk_rules doesn't exist; generating...\n";
+
+        my @rl = _expand($repo, $g_repo);
+        my @ul = _expand($user);
+        my @keys;
+        for my $r (@rl) {
+            for my $u (@ul) {
+                push @keys, "rs:$r:$u";
+            }
+        }
+        my $t = "$vk_rules-temp-$$";
+        $redis->sunionstore($t, @keys);
+        $redis->expire($t, 7);
+        @rules = $redis->sort(( $t, "get", "r:*", "store", $vk_rules));
+        $redis->expire($vk_rules, 72);
+    }
+    return @rules;
+}
+
+sub _expand {
+    my $base = shift;
+    my $base2 = shift || '';
+    my @t;
+
+    my @ret;
+    @ret = ($base, '@all');
+    push @ret, $base2 if $base2;
+    # dd(1, \@ret);
+
+    @t = $redis->smembers('repopatterns');
+    # dd(1.5, \@t);
+    for my $rp (@t) {
+        push @ret, $rp if $base =~ /^$rp$/ or $base2 =~ /^$rp$/;
+    }
+    # dd(2, \@ret);
+
+    @t = @ret;
+    for my $t (@t) {
+        push @ret, $redis->hkeys("g:$t");
+    }
+    return @ret;
+}
+
+sub dd {
+    use Data::Dumper;
+    for my $i (@_) {
+        print STDERR "DBG: " . Dumper($i);
+    }
 }
 
 1;

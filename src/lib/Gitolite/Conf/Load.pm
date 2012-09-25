@@ -19,6 +19,7 @@ package Gitolite::Conf::Load;
 
 use Exporter 'import';
 
+use Gitolite::Redis;
 use Gitolite::Common;
 use Gitolite::Rc;
 
@@ -88,6 +89,7 @@ sub access {
         return "$aa $ref $repo $user DENIED by existence";
     }
 
+    my @rules2 = map { [ split /\t/, $_ ] } _redis_rules($repo, generic_name($repo), $user);
     my @rules = rules( $repo, $user );
     trace( 2, scalar(@rules) . " rules found" );
     for my $r (@rules) {
